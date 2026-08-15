@@ -7,7 +7,7 @@ st.set_page_config(page_title="Widens Åkeri AB", page_icon="🚛", layout="wide
 DATA_FILE = "drivers_data.csv"
 USERS_FILE = "users_data.csv"
 
-# بارکردنی زانیاری شۆفێرەکان و هێڵەکان
+# Load driver data
 def load_driver_data():
     if os.path.exists(DATA_FILE):
         return pd.read_csv(DATA_FILE)
@@ -22,7 +22,7 @@ def load_driver_data():
         df.to_csv(DATA_FILE, index=False)
         return df
 
-# بارکردنی هەژمار و پاسۆردەکان
+# Load users
 def load_users():
     if os.path.exists(USERS_FILE):
         return pd.read_csv(USERS_FILE)
@@ -55,7 +55,7 @@ if "logged_in" not in st.session_state:
 def login_register_page():
     st.title("🚛 Widens Åkeri AB")
     
-    tab1, tab2 = st.tabs(["🔒 Logga in (چوونەژوورەوە)", "✍️ Skapa konto (تۆماربوونی نوێ)"])
+    tab1, tab2 = st.tabs(["🔒 Logga in (Login)", "✍️ Skapa konto (Sign up)"])
     
     with tab1:
         st.subheader("Ange användarnamn och lösenord")
@@ -75,17 +75,16 @@ def login_register_page():
                 st.error("Felaktigt användarnamn eller lösenord!")
 
     with tab2:
-        st.subheader("Registrera ny chaufför")
-        new_name = st.text_input("Ditt namn och efternamn (ناوی تەواوت):")
-        new_username = st.text_input("Välj användarnamn (ناوی بەکارهێنەر):")
-        new_password = st.text_input("Välj lösenord (پاسۆرد):", type="password")
+        st.subheader("Registrera ny chaufför (Register new driver)")
+        new_name = st.text_input("Ditt fullständiga namn (Full name):")
+        new_username = st.text_input("Välj användarnamn (Choose username):")
+        new_password = st.text_input("Välj lösenord (Choose password):", type="password")
         
         if st.button("Skapa konto"):
             if new_name and new_username and new_password:
                 if new_username in df_users["username"].values:
                     st.error("Detta användarnamn är redan upptaget!")
                 else:
-                    # زیاکردنی بەکارهێنەری نوێ
                     new_user_row = pd.DataFrame([{
                         "username": new_username, 
                         "password": str(new_password), 
@@ -95,7 +94,6 @@ def login_register_page():
                     updated_users = pd.concat([df_users, new_user_row], ignore_index=True)
                     save_users(updated_users)
                     
-                    # زیاکردنی شۆفێرەکە بۆ لیستی دەوام
                     new_driver_row = pd.DataFrame([{
                         "Förare": new_name,
                         "Status idag": "Ledig",
@@ -143,7 +141,7 @@ else:
         with col1:
             selected_driver = st.selectbox("Välj chaufför:", df_drivers["Förare"])
         with col2:
-            new_route = st.text_input("Fordon och rutt (t.ex. Scania 01 - Kalmar till Karlskrona):")
+            new_route = st.text_input("Fordon och rutt (Vehicle and route):")
 
         if st.button("Spara uppdrag"):
             df_drivers.loc[df_drivers["Förare"] == selected_driver, "Fordon / Rutt"] = new_route
@@ -163,10 +161,10 @@ else:
             status_options = ["I tjänst", "Sjuk / Ledig", "Ledig"]
             current_status_index = status_options.index(driver_info["Status idag"]) if driver_info["Status idag"] in status_options else 0
             
-            new_status = st.selectbox("Ange din status idag:", status_options, index=current_status_index)
+            new_status = st.selectbox("Ange din status idag (Set status today):", status_options, index=current_status_index)
             
             is_available = st.checkbox(
-                "🙋‍♂️ Jag är tillgänglig för arbete imorgon (om någon är sjuk)", 
+                "🙋‍♂️ Jag är tillgänglig för arbete imorgon (Available tomorrow)", 
                 value=(driver_info["Tillgänglig imorgon?"] == "Ja")
             )
             
