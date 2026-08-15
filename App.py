@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.se st.set_page_config(
+st.set_page_config(
     page_title="Widens Åkeri AB", 
     page_icon="🚛", 
     layout="wide",
@@ -19,7 +19,6 @@ hide_st_style = """
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
-
 
 DATA_FILE = "drivers_data.csv"
 USERS_FILE = "users_data.csv"
