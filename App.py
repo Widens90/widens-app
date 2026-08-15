@@ -23,10 +23,10 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 DATA_FILE = "drivers_data.csv"
 USERS_FILE = "users_data.csv"
 
-# Load driver data
+# Load driver data safely as string
 def load_driver_data():
     if os.path.exists(DATA_FILE):
-        df = pd.read_csv(DATA_FILE)
+        df = pd.read_csv(DATA_FILE, dtype=str).fillna("-")
         if "Telefon" not in df.columns:
             df["Telefon"] = "-"
         if "Körkort" not in df.columns:
@@ -41,14 +41,14 @@ def load_driver_data():
             "Tillgänglig imorgon?": ["🟢 Ja", "🔴 Nej"],
             "Fordon / Rutt": ["Scania 01 (Kalmar)", "Volvo 02 (Karlskrona)"]
         }
-        df = pd.DataFrame(initial_data)
+        df = pd.DataFrame(initial_data, dtype=str)
         df.to_csv(DATA_FILE, index=False)
         return df
 
-# Load users data
+# Load users data safely as string
 def load_users():
     if os.path.exists(USERS_FILE):
-        df = pd.read_csv(USERS_FILE)
+        df = pd.read_csv(USERS_FILE, dtype=str).fillna("-")
         if "phone" not in df.columns:
             df["phone"] = "-"
         if "license" not in df.columns:
@@ -63,15 +63,15 @@ def load_users():
             "phone": ["0700000000", "0701234567"],
             "license": ["CE", "CE"]
         }
-        df = pd.DataFrame(initial_users)
+        df = pd.DataFrame(initial_users, dtype=str)
         df.to_csv(USERS_FILE, index=False)
         return df
 
 def save_driver_data(df):
-    df.to_csv(DATA_FILE, index=False)
+    df.astype(str).to_csv(DATA_FILE, index=False)
 
 def save_users(df):
-    df.to_csv(USERS_FILE, index=False)
+    df.astype(str).to_csv(USERS_FILE, index=False)
 
 df_drivers = load_driver_data()
 df_users = load_users()
@@ -93,12 +93,12 @@ def login_register_page():
         password = st.text_input("Lösenord (Password)", type="password", key="login_pass")
         
         if st.button("Logga in"):
-            user_match = df_users[(df_users["username"] == username) & (df_users["password"].astype(str) == str(password))]
+            user_match = df_users[(df_users["username"].astype(str) == str(username)) & (df_users["password"].astype(str) == str(password))]
             if not user_match.empty:
                 st.session_state["logged_in"] = True
-                st.session_state["user_role"] = user_match.iloc[0]["role"]
-                st.session_state["username"] = username
-                st.session_state["driver_name"] = user_match.iloc[0]["driver_name"]
+                st.session_state["user_role"] = str(user_match.iloc[0]["role"])
+                st.session_state["username"] = str(username)
+                st.session_state["driver_name"] = str(user_match.iloc[0]["driver_name"])
                 st.success("Inloggningen lyckades!")
                 st.rerun()
             else:
@@ -116,28 +116,28 @@ def login_register_page():
 
         if st.button("Skapa konto"):
             if new_name and new_username and new_password:
-                if new_username in df_users["username"].values:
+                if str(new_username) in df_users["username"].astype(str).values:
                     st.error("Detta användarnamn är redan upptaget!")
                 else:
                     new_user_row = pd.DataFrame([{
-                        "username": new_username, 
+                        "username": str(new_username), 
                         "password": str(new_password), 
                         "role": "Chaufför",
-                        "driver_name": new_name,
-                        "phone": new_phone if new_phone else "-",
-                        "license": license_code
-                    }])
+                        "driver_name": str(new_name),
+                        "phone": str(new_phone) if new_phone else "-",
+                        "license": str(license_code)
+                    }], dtype=str)
                     updated_users = pd.concat([df_users, new_user_row], ignore_index=True)
                     save_users(updated_users)
                     
                     new_driver_row = pd.DataFrame([{
-                        "Förare": new_name,
-                        "Telefon": new_phone if new_phone else "-",
-                        "Körkort": license_code,
+                        "Förare": str(new_name),
+                        "Telefon": str(new_phone) if new_phone else "-",
+                        "Körkort": str(license_code),
                         "Status idag": "Ledig",
                         "Tillgänglig imorgon?": "🔴 Nej",
                         "Fordon / Rutt": "Ej tilldelad"
-                    }])
+                    }], dtype=str)
                     updated_drivers = pd.concat([df_drivers, new_driver_row], ignore_index=True)
                     save_driver_data(updated_drivers)
                     
@@ -183,14 +183,14 @@ else:
         with tab_admin2:
             st.header("🔑 Återställ lösenord / Ändra uppgifter (Reset Password & Edit Details)")
             
-            selected_user = st.selectbox("Välj användare att redigera:", df_users["username"])
-            user_info = df_users[df_users["username"] == selected_user].iloc[0]
+            selected_user = st.selectbox("Välj användare att redigera:", df_users["username"].astype(str))
+            user_info = df_users[df_users["username"].astype(str) == str(selected_user)].iloc[0]
 
             st.info(f"Nuvarande lösenord för **{selected_user}**: `{user_info['password']}`")
 
             col1, col2 = st.columns(2)
             with col1:
-                edit_name = st.text_input("Ändra namn (Edit Name):", value=user_info["driver_name"])
+                edit_name = st.text_input("Ändra namn (Edit Name):", value=str(user_info["driver_name"]))
                 edit_phone = st.text_input("Ändra telefon (Edit Phone):", value=str(user_info["phone"]))
             with col2:
                 current_lic = str(user_info.get("license", "CE"))
@@ -198,17 +198,17 @@ else:
                 edit_pass = st.text_input("Nytt lösenord (New Password):", value=str(user_info["password"]))
 
             if st.button("Spara ändringar (Save Changes)"):
-                df_users.loc[df_users["username"] == selected_user, "driver_name"] = edit_name
-                df_users.loc[df_users["username"] == selected_user, "phone"] = edit_phone
-                df_users.loc[df_users["username"] == selected_user, "license"] = edit_license
-                df_users.loc[df_users["username"] == selected_user, "password"] = str(edit_pass)
+                df_users.loc[df_users["username"].astype(str) == str(selected_user), "driver_name"] = str(edit_name)
+                df_users.loc[df_users["username"].astype(str) == str(selected_user), "phone"] = str(edit_phone)
+                df_users.loc[df_users["username"].astype(str) == str(selected_user), "license"] = str(edit_license)
+                df_users.loc[df_users["username"].astype(str) == str(selected_user), "password"] = str(edit_pass)
                 save_users(df_users)
 
-                old_name = user_info["driver_name"]
-                if old_name in df_drivers["Förare"].values:
-                    df_drivers.loc[df_drivers["Förare"] == old_name, "Förare"] = edit_name
-                    df_drivers.loc[df_drivers["Förare"] == old_name, "Telefon"] = edit_phone
-                    df_drivers.loc[df_drivers["Förare"] == old_name, "Körkort"] = edit_license
+                old_name = str(user_info["driver_name"])
+                if old_name in df_drivers["Förare"].astype(str).values:
+                    df_drivers.loc[df_drivers["Förare"].astype(str) == old_name, "Förare"] = str(edit_name)
+                    df_drivers.loc[df_drivers["Förare"].astype(str) == old_name, "Telefon"] = str(edit_phone)
+                    df_drivers.loc[df_drivers["Förare"].astype(str) == old_name, "Körkort"] = str(edit_license)
                     save_driver_data(df_drivers)
 
                 st.success("Uppgifterna har uppdaterats!")
@@ -218,14 +218,14 @@ else:
             st.header("✍️ Tilldela fordon / rutt")
             col1, col2 = st.columns(2)
             with col1:
-                selected_driver = st.selectbox("Välj chaufför:", df_drivers["Förare"])
-                driver_lic = df_drivers[df_drivers["Förare"] == selected_driver]["Körkort"].values[0] if selected_driver in df_drivers["Förare"].values else "-"
+                selected_driver = st.selectbox("Välj chaufför:", df_drivers["Förare"].astype(str))
+                driver_lic = df_drivers[df_drivers["Förare"].astype(str) == str(selected_driver)]["Körkort"].values[0] if str(selected_driver) in df_drivers["Förare"].astype(str).values else "-"
                 st.caption(f"💳 Körkort för valda chaufför: **{driver_lic}**")
             with col2:
                 new_route = st.text_input("Fordon och rutt (t.ex. Scania CE med släp):")
 
             if st.button("Spara uppdrag"):
-                df_drivers.loc[df_drivers["Förare"] == selected_driver, "Fordon / Rutt"] = new_route
+                df_drivers.loc[df_drivers["Förare"].astype(str) == str(selected_driver), "Fordon / Rutt"] = str(new_route)
                 save_driver_data(df_drivers)
                 st.success(f"Uppdraget för {selected_driver} har uppdaterats!")
                 st.rerun()
@@ -233,10 +233,10 @@ else:
     elif role == "Chaufför":
         st.header("👤 Chaufförsportal - Rapportera status")
         
-        driver_name = st.session_state["driver_name"]
+        driver_name = str(st.session_state["driver_name"])
         
-        if driver_name in df_drivers["Förare"].values:
-            driver_info = df_drivers[df_drivers["Förare"] == driver_name].iloc[0]
+        if driver_name in df_drivers["Förare"].astype(str).values:
+            driver_info = df_drivers[df_drivers["Förare"].astype(str) == driver_name].iloc[0]
             st.info(f"Ditt nuvarande uppdrag: **{driver_info['Fordon / Rutt']}**")
             
             col1, col2 = st.columns(2)
@@ -262,14 +262,14 @@ else:
             if st.button("Spara status (Save Status)"):
                 formatted_avail = "🟢 Ja" if "Ja" in availability_choice else "🔴 Nej"
                 
-                df_drivers.loc[df_drivers["Förare"] == driver_name, "Status idag"] = new_status
-                df_drivers.loc[df_drivers["Förare"] == driver_name, "Tillgänglig imorgon?"] = formatted_avail
-                df_drivers.loc[df_drivers["Förare"] == driver_name, "Telefon"] = user_phone
-                df_drivers.loc[df_drivers["Förare"] == driver_name, "Körkort"] = user_lic
+                df_drivers.loc[df_drivers["Förare"].astype(str) == driver_name, "Status idag"] = str(new_status)
+                df_drivers.loc[df_drivers["Förare"].astype(str) == driver_name, "Tillgänglig imorgon?"] = str(formatted_avail)
+                df_drivers.loc[df_drivers["Förare"].astype(str) == driver_name, "Telefon"] = str(user_phone)
+                df_drivers.loc[df_drivers["Förare"].astype(str) == driver_name, "Körkort"] = str(user_lic)
                 save_driver_data(df_drivers)
 
-                df_users.loc[df_users["driver_name"] == driver_name, "phone"] = user_phone
-                df_users.loc[df_users["driver_name"] == driver_name, "license"] = user_lic
+                df_users.loc[df_users["driver_name"].astype(str) == driver_name, "phone"] = str(user_phone)
+                df_users.loc[df_users["driver_name"].astype(str) == driver_name, "license"] = str(user_lic)
                 save_users(df_users)
 
                 st.success("Dina uppgifter har sparats!")
