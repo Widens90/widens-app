@@ -148,13 +148,19 @@ def login_register_page():
 if not st.session_state["logged_in"]:
     login_register_page()
 else:
-    st.sidebar.title(f"Välkommen, {st.session_state['driver_name']}")
-    if st.sidebar.button("Logga ut"):
-        st.session_state["logged_in"] = False
-        st.session_state["user_role"] = None
-        st.session_state["username"] = ""
-        st.session_state["driver_name"] = ""
-        st.rerun()
+    # Top Welcome Bar & Logout Button (Visible on Mobile & Desktop)
+    col_welcome, col_logout = st.columns([3, 1])
+    with col_welcome:
+        st.markdown(f"### 👋 Välkommen, **{st.session_state['driver_name']}**")
+    with col_logout:
+        if st.button("Logga ut 👋", key="main_logout"):
+            st.session_state["logged_in"] = False
+            st.session_state["user_role"] = None
+            st.session_state["username"] = ""
+            st.session_state["driver_name"] = ""
+            st.rerun()
+
+    st.markdown("---")
 
     role = st.session_state["user_role"]
     st.title("🚛 Widens Åkeri AB - Kalmar")
