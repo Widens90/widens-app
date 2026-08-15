@@ -20,6 +20,19 @@ hide_st_style = """
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
+# بەستنەوەی وێنەی ئایکۆنی ئەپ بۆ شاشەی مۆبایل
+IMAGE_URL = "https://raw.githubusercontent.com/Widens90/widens-app/main/Wedins%20Åkeri.jpeg"
+
+app_icon_html = f"""
+    <head>
+        <!-- Apple Touch Icon (iOS Safari) -->
+        <link rel="apple-touch-icon" href="{IMAGE_URL}">
+        <!-- Android & Chrome Icon -->
+        <link rel="icon" type="image/jpeg" sizes="192x192" href="{IMAGE_URL}">
+    </head>
+"""
+st.markdown(app_icon_html, unsafe_allow_html=True)
+
 DATA_FILE = "drivers_data.csv"
 USERS_FILE = "users_data.csv"
 
@@ -148,7 +161,6 @@ def login_register_page():
 if not st.session_state["logged_in"]:
     login_register_page()
 else:
-    # Top Welcome Bar & Logout Button (Visible on Mobile & Desktop)
     col_welcome, col_logout = st.columns([3, 1])
     with col_welcome:
         st.markdown(f"### 👋 Välkommen, **{st.session_state['driver_name']}**")
