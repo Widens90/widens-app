@@ -2,80 +2,134 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Sidkonfiguration
 st.set_page_config(page_title="Widens Åkeri AB", page_icon="🚛", layout="wide")
 
 DATA_FILE = "drivers_data.csv"
+USERS_FILE = "users_data.csv"
 
-# Användare och lösenord
-USERS = {
-    "admin": {"password": "123", "role": "Transportledare"},
-    "chauffor": {"password": "456", "role": "Chaufför"}
-}
-
-def load_data():
+# بارکردنی زانیاری شۆفێرەکان و هێڵەکان
+def load_driver_data():
     if os.path.exists(DATA_FILE):
         return pd.read_csv(DATA_FILE)
     else:
         initial_data = {
-            "Förare": ["Ahmed", "Karwan", "Aras", "Soran"],
-            "Status idag": ["I tjänst", "I tjänst", "Sjuk / Ledig", "Ledig"],
-            "Tillgänglig imorgon?": ["Nej", "Nej", "Nej", "Ja"],
-            "Fordon / Rutt": ["Scania 01 (Kalmar)", "Volvo 02 (Karlskrona)", "Ej tilldelad", "Ej tilldelad"]
+            "Förare": ["Ahmed", "Karwan"],
+            "Status idag": ["I tjänst", "I tjänst"],
+            "Tillgänglig imorgon?": ["Nej", "Nej"],
+            "Fordon / Rutt": ["Scania 01 (Kalmar)", "Volvo 02 (Karlskrona)"]
         }
         df = pd.DataFrame(initial_data)
         df.to_csv(DATA_FILE, index=False)
         return df
 
-def save_data(df):
+# بارکردنی هەژمار و پاسۆردەکان
+def load_users():
+    if os.path.exists(USERS_FILE):
+        return pd.read_csv(USERS_FILE)
+    else:
+        initial_users = {
+            "username": ["admin", "chauffor"],
+            "password": ["123", "456"],
+            "role": ["Transportledare", "Chaufför"],
+            "driver_name": ["Admin", "Ahmed"]
+        }
+        df = pd.DataFrame(initial_users)
+        df.to_csv(USERS_FILE, index=False)
+        return df
+
+def save_driver_data(df):
     df.to_csv(DATA_FILE, index=False)
 
-df = load_data()
+def save_users(df):
+    df.to_csv(USERS_FILE, index=False)
+
+df_drivers = load_driver_data()
+df_users = load_users()
 
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
     st.session_state["user_role"] = None
     st.session_state["username"] = ""
+    st.session_state["driver_name"] = ""
 
-def login_page():
-    st.title("🚛 Widens Åkeri AB - Inloggning")
-    st.subheader("Ange användarnamn och lösenord")
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        username = st.text_input("Användarnamn")
-        password = st.text_input("Lösenord", type="password")
+def login_register_page():
+    st.title("🚛 Widens Åkeri AB")
+    
+    tab1, tab2 = st.tabs(["🔒 Logga in (چوونەژوورەوە)", "✍️ Skapa konto (تۆماربوونی نوێ)"])
+    
+    with tab1:
+        st.subheader("Ange användarnamn och lösenord")
+        username = st.text_input("Användarnamn", key="login_user")
+        password = st.text_input("Lösenord", type="password", key="login_pass")
         
         if st.button("Logga in"):
-            if username in USERS and USERS[username]["password"] == password:
+            user_match = df_users[(df_users["username"] == username) & (df_users["password"] == str(password))]
+            if not user_match.empty:
                 st.session_state["logged_in"] = True
-                st.session_state["user_role"] = USERS[username]["role"]
+                st.session_state["user_role"] = user_match.iloc[0]["role"]
                 st.session_state["username"] = username
+                st.session_state["driver_name"] = user_match.iloc[0]["driver_name"]
                 st.success("Inloggningen lyckades!")
                 st.rerun()
             else:
                 st.error("Felaktigt användarnamn eller lösenord!")
 
+    with tab2:
+        st.subheader("Registrera ny chaufför")
+        new_name = st.text_input("Ditt namn och efternamn (ناوی تەواوت):")
+        new_username = st.text_input("Välj användarnamn (ناوی بەکارهێنەر):")
+        new_password = st.text_input("Välj lösenord (پاسۆرد):", type="password")
+        
+        if st.button("Skapa konto"):
+            if new_name and new_username and new_password:
+                if new_username in df_users["username"].values:
+                    st.error("Detta användarnamn är redan upptaget!")
+                else:
+                    # زیاکردنی بەکارهێنەری نوێ
+                    new_user_row = pd.DataFrame([{
+                        "username": new_username, 
+                        "password": str(new_password), 
+                        "role": "Chaufför",
+                        "driver_name": new_name
+                    }])
+                    updated_users = pd.concat([df_users, new_user_row], ignore_index=True)
+                    save_users(updated_users)
+                    
+                    # زیاکردنی شۆفێرەکە بۆ لیستی دەوام
+                    new_driver_row = pd.DataFrame([{
+                        "Förare": new_name,
+                        "Status idag": "Ledig",
+                        "Tillgänglig imorgon?": "Nej",
+                        "Fordon / Rutt": "Ej tilldelad"
+                    }])
+                    updated_drivers = pd.concat([df_drivers, new_driver_row], ignore_index=True)
+                    save_driver_data(updated_drivers)
+                    
+                    st.success("Ditt konto har skapats! Du kan nu logga in.")
+            else:
+                st.warning("Fyll i alla fält!")
+
 if not st.session_state["logged_in"]:
-    login_page()
+    login_register_page()
 else:
-    st.sidebar.title(f"Välkommen, {st.session_state['username']}")
+    st.sidebar.title(f"Välkommen, {st.session_state['driver_name']}")
     if st.sidebar.button("Logga ut"):
         st.session_state["logged_in"] = False
         st.session_state["user_role"] = None
         st.session_state["username"] = ""
+        st.session_state["driver_name"] = ""
         st.rerun()
 
     role = st.session_state["user_role"]
     st.title("🚛 Widens Åkeri AB - Kalmar")
 
     if role == "Transportledare":
-        st.header("📊 Transportledare - Översikt över chaufförer")
-        st.dataframe(df, use_container_width=True)
+        st.header("📊 Översikt över alla chaufförer")
+        st.dataframe(df_drivers, use_container_width=True)
 
         st.markdown("---")
         st.header("🆘 Tillgängliga ersättare för imorgon")
-        standby_drivers = df[df["Tillgänglig imorgon?"] == "Ja"]
+        standby_drivers = df_drivers[df_drivers["Tillgänglig imorgon?"] == "Ja"]
         
         if not standby_drivers.empty:
             st.success("Dessa chaufförer är tillgängliga för arbete imorgon:")
@@ -87,37 +141,40 @@ else:
         st.header("✍️ Tilldela fordon / rutt")
         col1, col2 = st.columns(2)
         with col1:
-            selected_driver = st.selectbox("Välj chaufför:", df["Förare"])
+            selected_driver = st.selectbox("Välj chaufför:", df_drivers["Förare"])
         with col2:
             new_route = st.text_input("Fordon och rutt (t.ex. Scania 01 - Kalmar till Karlskrona):")
 
         if st.button("Spara uppdrag"):
-            df.loc[df["Förare"] == selected_driver, "Fordon / Rutt"] = new_route
-            save_data(df)
+            df_drivers.loc[df_drivers["Förare"] == selected_driver, "Fordon / Rutt"] = new_route
+            save_driver_data(df_drivers)
             st.success(f"Uppdraget för {selected_driver} har uppdaterats!")
             st.rerun()
 
     elif role == "Chaufför":
         st.header("👤 Chaufförsportal - Rapportera status")
         
-        driver_name = st.selectbox("Välj ditt namn:", df["Förare"])
-        driver_info = df[df["Förare"] == driver_name].iloc[0]
+        driver_name = st.session_state["driver_name"]
         
-        st.info(f"Ditt nuvarande uppdrag: **{driver_info['Fordon / Rutt']}**")
-        
-        status_options = ["I tjänst", "Sjuk / Ledig", "Ledig"]
-        current_status_index = status_options.index(driver_info["Status idag"]) if driver_info["Status idag"] in status_options else 0
-        
-        new_status = st.selectbox("Ange din status idag:", status_options, index=current_status_index)
-        
-        is_available = st.checkbox(
-            "🙋‍♂️ Jag är tillgänglig för arbete imorgon (om någon är sjuk)", 
-            value=(driver_info["Tillgänglig imorgon?"] == "Ja")
-        )
-        
-        if st.button("Spara status"):
-            df.loc[df["Förare"] == driver_name, "Status idag"] = new_status
-            df.loc[df["Förare"] == driver_name, "Tillgänglig imorgon?"] = "Ja" if is_available else "Nej"
-            save_data(df)
-            st.success("Dina uppgifter har sparats!")
-            st.rerun()
+        if driver_name in df_drivers["Förare"].values:
+            driver_info = df_drivers[df_drivers["Förare"] == driver_name].iloc[0]
+            st.info(f"Ditt nuvarande uppdrag: **{driver_info['Fordon / Rutt']}**")
+            
+            status_options = ["I tjänst", "Sjuk / Ledig", "Ledig"]
+            current_status_index = status_options.index(driver_info["Status idag"]) if driver_info["Status idag"] in status_options else 0
+            
+            new_status = st.selectbox("Ange din status idag:", status_options, index=current_status_index)
+            
+            is_available = st.checkbox(
+                "🙋‍♂️ Jag är tillgänglig för arbete imorgon (om någon är sjuk)", 
+                value=(driver_info["Tillgänglig imorgon?"] == "Ja")
+            )
+            
+            if st.button("Spara status"):
+                df_drivers.loc[df_drivers["Förare"] == driver_name, "Status idag"] = new_status
+                df_drivers.loc[df_drivers["Förare"] == driver_name, "Tillgänglig imorgon?"] = "Ja" if is_available else "Nej"
+                save_driver_data(df_drivers)
+                st.success("Dina uppgifter har sparats!")
+                st.rerun()
+        else:
+            st.error("Ditt namn hittades inte i systemet.")
