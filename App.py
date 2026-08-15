@@ -2,7 +2,24 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.set_page_config(page_title="Widens Åkeri AB", page_icon="🚛", layout="wide")
+st.se st.set_page_config(
+    page_title="Widens Åkeri AB", 
+    page_icon="🚛", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Hide top menu and toolbar
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            .stDeployButton {display:none;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 
 DATA_FILE = "drivers_data.csv"
 USERS_FILE = "users_data.csv"
